@@ -36,6 +36,7 @@ The graphical terminal UI comes next.
 
 ```sh
 cargo run -- doctor
+cargo run -- offline check
 cargo run -- init-config
 export OMLX_API_KEY="your-local-omlx-key"
 cargo run -- chat --prompt "Say hello from local inference"
