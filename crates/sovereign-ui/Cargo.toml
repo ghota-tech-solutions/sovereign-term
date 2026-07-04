@@ -1,0 +1,16 @@
+[package]
+name = "sovereign-ui"
+version = "0.1.0"
+description = "Renderer-agnostic native surface state for Sovereign Term."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+sovereign-terminal = { path = "../sovereign-terminal" }
+
+[dev-dependencies]
+serde_json = "1.0"

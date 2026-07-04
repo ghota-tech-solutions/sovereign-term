@@ -10,16 +10,18 @@ Sovereign Term is split into replaceable subsystems so the product can evolve wi
 - `sovereign-git`: local Git metadata snapshots without network calls.
 - `sovereign-fs`: permissioned filesystem metadata snapshots without file contents.
 - `sovereign-plugin`: plugin manifests, activation events, capability declarations.
+- `sovereign-ui`: renderer-agnostic workspace surface state for tabs, panes, agent panel, and privacy footer.
 - `sovereign-term`: developer CLI and future app entrypoint.
 
 See [block-engine.md](block-engine.md) for the local command-block data model.
 See [filesystem-plugin.md](filesystem-plugin.md) for the local filesystem plugin model.
 See [git-plugin.md](git-plugin.md) for the local Git plugin model.
+See [native-surface.md](native-surface.md) for the first native workspace surface model.
 
 ## Runtime Boundaries
 
 ```text
-terminal output -> command block model -> agent context builder
+terminal output -> command block model -> workspace surface model -> renderer adapter
 user prompt -> provider resolver -> local model endpoint
 plugin manifest -> permission gate -> runtime activation
 ```

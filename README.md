@@ -28,6 +28,7 @@ This repository is intentionally early. The first milestone is a compilable Rust
 - public model endpoints blocked unless `allow_remote = true`
 - plugin manifest model with explicit capabilities
 - metadata-only Git and filesystem snapshots for future plugins
+- renderer-agnostic native surface model for tabs, panes, agent panel, and privacy footer
 - CLI commands for config, provider inspection, local chat, plugin validation, block demos, Git snapshots, and filesystem snapshots
 
 The graphical terminal UI comes next.
@@ -37,6 +38,7 @@ The graphical terminal UI comes next.
 ```sh
 cargo run -- doctor
 cargo run -- offline check
+cargo run -- ui demo
 cargo run -- init-config
 export OMLX_API_KEY="your-local-omlx-key"
 cargo run -- chat --prompt "Say hello from local inference"
@@ -84,6 +86,7 @@ See [docs/architecture/overview.md](docs/architecture/overview.md).
 See [docs/architecture/block-engine.md](docs/architecture/block-engine.md) for the command-block data model.
 See [docs/architecture/filesystem-plugin.md](docs/architecture/filesystem-plugin.md) for the local filesystem plugin model.
 See [docs/architecture/git-plugin.md](docs/architecture/git-plugin.md) for the local Git plugin model.
+See [docs/architecture/native-surface.md](docs/architecture/native-surface.md) for the native workspace surface model.
 See [docs/product/privacy-model.md](docs/product/privacy-model.md) for the privacy contract.
 See [docs/product/interface-system.md](docs/product/interface-system.md) for the block-based interface direction.
 
