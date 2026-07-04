@@ -11,6 +11,8 @@ Sovereign Term treats privacy as a product invariant.
 - Public internet model endpoints are blocked unless their provider sets `allow_remote = true`.
 - API keys are read from environment variables or local config and are not printed.
 
+Run `sovereign-term offline check` to audit the active config before invoking an agent. The check fails when telemetry or cloud handoff are enabled, when the default provider points at public internet, or when any public provider is explicitly allowed for remote access.
+
 ## Local Provider Contract
 
 A local provider is expected to be reachable on loopback or a private network address. Sovereign Term allows loopback and private network endpoints for providers with `allow_remote = false`; public internet hosts require explicit opt-in.

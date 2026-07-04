@@ -163,6 +163,12 @@ pub fn classify_endpoint(endpoint: &Url) -> Result<EndpointScope> {
     }
 }
 
+pub fn classify_endpoint_url(endpoint: &str) -> Result<EndpointScope> {
+    let endpoint =
+        Url::parse(endpoint).with_context(|| format!("invalid endpoint URL '{endpoint}'"))?;
+    classify_endpoint(&endpoint)
+}
+
 fn validate_endpoint_access(endpoint: &Url, allow_remote: bool) -> Result<()> {
     let scope = classify_endpoint(endpoint)?;
     if scope == EndpointScope::PublicInternet && !allow_remote {
