@@ -79,7 +79,7 @@ Sovereign Term
 
 See [docs/architecture/overview.md](docs/architecture/overview.md).
 See [docs/product/privacy-model.md](docs/product/privacy-model.md) for the privacy contract.
-See [docs/product/interface-system.md](docs/product/interface-system.md) for the Warp-inspired interface direction.
+See [docs/product/interface-system.md](docs/product/interface-system.md) for the block-based interface direction.
 
 ## Plugin Philosophy
 
