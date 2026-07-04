@@ -8,6 +8,7 @@ members = [
   "crates/sovereign-git",
   "crates/sovereign-plugin",
   "crates/sovereign-terminal",
+  "crates/sovereign-ui",
 ]
 
 [workspace.package]
@@ -37,6 +38,7 @@ sovereign-fs = { path = "crates/sovereign-fs" }
 sovereign-git = { path = "crates/sovereign-git" }
 sovereign-plugin = { path = "crates/sovereign-plugin" }
 sovereign-terminal = { path = "crates/sovereign-terminal" }
+sovereign-ui = { path = "crates/sovereign-ui" }
 tokio = { version = "1.47", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }

@@ -1091,6 +1091,7 @@ dependencies = [
  "sovereign-git",
  "sovereign-plugin",
  "sovereign-terminal",
+ "sovereign-ui",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -1102,6 +1103,15 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "sovereign-ui"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sovereign-terminal",
 ]
 
 [[package]]

@@ -12,6 +12,7 @@ use sovereign_fs::{FileSnapshotPolicy, snapshot_tree};
 use sovereign_git::snapshot as git_snapshot;
 use sovereign_plugin::validate_manifest;
 use sovereign_terminal::{BlockTimeline, OutputStream};
+use sovereign_ui::WorkspaceSurface;
 use tracing_subscriber::EnvFilter;
 
 #[derive(Debug, Parser)]
@@ -63,6 +64,10 @@ enum Commands {
         #[command(subcommand)]
         command: OfflineCommands,
     },
+    Ui {
+        #[command(subcommand)]
+        command: UiCommands,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -105,6 +110,11 @@ enum OfflineCommands {
     Check,
 }
 
+#[derive(Debug, Subcommand)]
+enum UiCommands {
+    Demo,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
@@ -142,6 +152,9 @@ async fn main() -> Result<()> {
         },
         Commands::Offline { command } => match command {
             OfflineCommands::Check => offline_check(cli.config),
+        },
+        Commands::Ui { command } => match command {
+            UiCommands::Demo => ui_demo(),
         },
     }
 }
@@ -409,6 +422,12 @@ fn fs_snapshot_command(
     };
     let snapshot = snapshot_tree(path, policy)?;
     println!("{}", serde_json::to_string_pretty(&snapshot)?);
+    Ok(())
+}
+
+fn ui_demo() -> Result<()> {
+    let surface = WorkspaceSurface::demo_local();
+    println!("{}", serde_json::to_string_pretty(&surface)?);
     Ok(())
 }
 
