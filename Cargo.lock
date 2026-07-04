@@ -1051,6 +1051,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "sovereign-fs"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "sovereign-git"
 version = "0.1.0"
 dependencies = [
@@ -1077,6 +1087,7 @@ dependencies = [
  "serde_json",
  "sovereign-agent",
  "sovereign-core",
+ "sovereign-fs",
  "sovereign-git",
  "sovereign-plugin",
  "sovereign-terminal",

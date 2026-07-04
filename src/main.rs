@@ -5,6 +5,7 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use sovereign_agent::{ChatCompletionRequest, ChatMessage, OpenAiCompatibleClient};
 use sovereign_core::{load_config, redact_secret, write_default_config};
+use sovereign_fs::{FileSnapshotPolicy, snapshot_tree};
 use sovereign_git::snapshot as git_snapshot;
 use sovereign_plugin::validate_manifest;
 use sovereign_terminal::{BlockTimeline, OutputStream};
@@ -51,6 +52,10 @@ enum Commands {
         #[command(subcommand)]
         command: GitCommands,
     },
+    Fs {
+        #[command(subcommand)]
+        command: FsCommands,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -68,6 +73,23 @@ enum GitCommands {
     Snapshot {
         #[arg(default_value = ".")]
         path: PathBuf,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+enum FsCommands {
+    Snapshot {
+        #[arg(default_value = ".")]
+        path: PathBuf,
+
+        #[arg(long, default_value_t = 4)]
+        max_depth: usize,
+
+        #[arg(long, default_value_t = 2_000)]
+        max_entries: usize,
+
+        #[arg(long)]
+        include_hidden: bool,
     },
 }
 
@@ -97,6 +119,14 @@ async fn main() -> Result<()> {
         },
         Commands::Git { command } => match command {
             GitCommands::Snapshot { path } => git_snapshot_command(path),
+        },
+        Commands::Fs { command } => match command {
+            FsCommands::Snapshot {
+                path,
+                max_depth,
+                max_entries,
+                include_hidden,
+            } => fs_snapshot_command(path, max_depth, max_entries, include_hidden),
         },
     }
 }
@@ -228,6 +258,23 @@ fn blocks_demo() -> Result<()> {
 
 fn git_snapshot_command(path: PathBuf) -> Result<()> {
     let snapshot = git_snapshot(path)?;
+    println!("{}", serde_json::to_string_pretty(&snapshot)?);
+    Ok(())
+}
+
+fn fs_snapshot_command(
+    path: PathBuf,
+    max_depth: usize,
+    max_entries: usize,
+    include_hidden: bool,
+) -> Result<()> {
+    let policy = FileSnapshotPolicy {
+        max_depth,
+        max_entries,
+        include_hidden,
+        ..FileSnapshotPolicy::default()
+    };
+    let snapshot = snapshot_tree(path, policy)?;
     println!("{}", serde_json::to_string_pretty(&snapshot)?);
     Ok(())
 }

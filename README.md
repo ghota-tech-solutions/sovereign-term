@@ -26,7 +26,8 @@ This repository is intentionally early. The first milestone is a compilable Rust
 - default oMLX provider targeting `http://127.0.0.1:8000/v1/chat/completions`
 - privacy defaults with telemetry and cloud handoff disabled
 - plugin manifest model with explicit capabilities
-- CLI commands for config, provider inspection, local chat, and plugin validation
+- metadata-only Git and filesystem snapshots for future plugins
+- CLI commands for config, provider inspection, local chat, plugin validation, block demos, Git snapshots, and filesystem snapshots
 
 The graphical terminal UI comes next.
 
@@ -79,6 +80,7 @@ Sovereign Term
 
 See [docs/architecture/overview.md](docs/architecture/overview.md).
 See [docs/architecture/block-engine.md](docs/architecture/block-engine.md) for the command-block data model.
+See [docs/architecture/filesystem-plugin.md](docs/architecture/filesystem-plugin.md) for the local filesystem plugin model.
 See [docs/architecture/git-plugin.md](docs/architecture/git-plugin.md) for the local Git plugin model.
 See [docs/product/privacy-model.md](docs/product/privacy-model.md) for the privacy contract.
 See [docs/product/interface-system.md](docs/product/interface-system.md) for the block-based interface direction.

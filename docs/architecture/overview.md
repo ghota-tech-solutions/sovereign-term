@@ -7,10 +7,13 @@ Sovereign Term is split into replaceable subsystems so the product can evolve wi
 - `sovereign-core`: configuration, privacy defaults, local paths, provider resolution.
 - `sovereign-agent`: OpenAI-compatible model client and future local agent runtime.
 - `sovereign-terminal`: terminal snapshots, command blocks, PTY-facing domain types.
+- `sovereign-git`: local Git metadata snapshots without network calls.
+- `sovereign-fs`: permissioned filesystem metadata snapshots without file contents.
 - `sovereign-plugin`: plugin manifests, activation events, capability declarations.
 - `sovereign-term`: developer CLI and future app entrypoint.
 
 See [block-engine.md](block-engine.md) for the local command-block data model.
+See [filesystem-plugin.md](filesystem-plugin.md) for the local filesystem plugin model.
 See [git-plugin.md](git-plugin.md) for the local Git plugin model.
 
 ## Runtime Boundaries
