@@ -214,6 +214,7 @@ async fn chat(
             endpoint: provider.config.endpoint,
             model: provider.config.model,
             api_key: provider.api_key,
+            allow_remote: provider.config.allow_remote,
             timeout: Duration::from_secs(provider.config.request_timeout_secs),
             messages,
         })
