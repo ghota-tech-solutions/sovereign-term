@@ -28,6 +28,7 @@ This repository is intentionally early. The first milestone is a compilable Rust
 - public model endpoints blocked unless `allow_remote = true`
 - plugin manifest model with explicit capabilities
 - metadata-only Git and filesystem snapshots for future plugins
+- Git diff summaries with path-level insertion/deletion counts and no patch contents
 - renderer-agnostic native surface model for tabs, panes, agent panel, and privacy footer
 - CLI commands for config, provider inspection, local chat, plugin validation, block demos, Git snapshots, and filesystem snapshots
 
@@ -39,6 +40,7 @@ The graphical terminal UI comes next.
 cargo run -- doctor
 cargo run -- offline check
 cargo run -- ui demo
+cargo run -- git diff-summary
 cargo run -- init-config
 export OMLX_API_KEY="your-local-omlx-key"
 cargo run -- chat --prompt "Say hello from local inference"
