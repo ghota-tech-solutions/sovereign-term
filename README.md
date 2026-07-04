@@ -29,8 +29,9 @@ This repository is intentionally early. The first milestone is a compilable Rust
 - plugin manifest model with explicit capabilities
 - metadata-only Git and filesystem snapshots for future plugins
 - Git diff summaries with path-level insertion/deletion counts and no patch contents
+- bounded filesystem read previews behind an explicit CLI command
 - renderer-agnostic native surface model for tabs, panes, agent panel, and privacy footer
-- CLI commands for config, provider inspection, local chat, plugin validation, block demos, Git snapshots, and filesystem snapshots
+- CLI commands for config, provider inspection, local chat, plugin validation, block demos, Git snapshots, filesystem snapshots, and filesystem read previews
 
 The graphical terminal UI comes next.
 
@@ -41,6 +42,7 @@ cargo run -- doctor
 cargo run -- offline check
 cargo run -- ui demo
 cargo run -- git diff-summary
+cargo run -- fs read-preview README.md --max-bytes 512
 cargo run -- init-config
 export OMLX_API_KEY="your-local-omlx-key"
 cargo run -- chat --prompt "Say hello from local inference"

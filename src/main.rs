@@ -8,7 +8,7 @@ use sovereign_agent::{
     classify_endpoint_url,
 };
 use sovereign_core::{SovereignConfig, load_config, redact_secret, write_default_config};
-use sovereign_fs::{FileSnapshotPolicy, snapshot_tree};
+use sovereign_fs::{FileReadPolicy, FileSnapshotPolicy, read_preview, snapshot_tree};
 use sovereign_git::{diff_summary as git_diff_summary, snapshot as git_snapshot};
 use sovereign_plugin::validate_manifest;
 use sovereign_terminal::{BlockTimeline, OutputStream};
@@ -107,6 +107,18 @@ enum FsCommands {
         #[arg(long)]
         include_hidden: bool,
     },
+    ReadPreview {
+        path: PathBuf,
+
+        #[arg(long, default_value = ".")]
+        root: PathBuf,
+
+        #[arg(long, default_value_t = sovereign_fs::DEFAULT_READ_PREVIEW_MAX_BYTES)]
+        max_bytes: usize,
+
+        #[arg(long)]
+        include_hidden: bool,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -154,6 +166,12 @@ async fn main() -> Result<()> {
                 max_entries,
                 include_hidden,
             } => fs_snapshot_command(path, max_depth, max_entries, include_hidden),
+            FsCommands::ReadPreview {
+                path,
+                root,
+                max_bytes,
+                include_hidden,
+            } => fs_read_preview_command(root, path, max_bytes, include_hidden),
         },
         Commands::Offline { command } => match command {
             OfflineCommands::Check => offline_check(cli.config),
@@ -433,6 +451,22 @@ fn fs_snapshot_command(
     };
     let snapshot = snapshot_tree(path, policy)?;
     println!("{}", serde_json::to_string_pretty(&snapshot)?);
+    Ok(())
+}
+
+fn fs_read_preview_command(
+    root: PathBuf,
+    path: PathBuf,
+    max_bytes: usize,
+    include_hidden: bool,
+) -> Result<()> {
+    let policy = FileReadPolicy {
+        max_bytes,
+        include_hidden,
+        ..FileReadPolicy::default()
+    };
+    let preview = read_preview(root, path, policy)?;
+    println!("{}", serde_json::to_string_pretty(&preview)?);
     Ok(())
 }
 
