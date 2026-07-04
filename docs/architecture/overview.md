@@ -10,6 +10,8 @@ Sovereign Term is split into replaceable subsystems so the product can evolve wi
 - `sovereign-plugin`: plugin manifests, activation events, capability declarations.
 - `sovereign-term`: developer CLI and future app entrypoint.
 
+See [block-engine.md](block-engine.md) for the local command-block data model.
+
 ## Runtime Boundaries
 
 ```text
