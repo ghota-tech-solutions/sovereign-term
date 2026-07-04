@@ -1,0 +1,16 @@
+[package]
+name = "sovereign-git"
+version = "0.1.0"
+description = "Local-only Git workflow primitives for Sovereign Term."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+
+[dev-dependencies]
+tempfile = "3.23"

@@ -5,6 +5,7 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use sovereign_agent::{ChatCompletionRequest, ChatMessage, OpenAiCompatibleClient};
 use sovereign_core::{load_config, redact_secret, write_default_config};
+use sovereign_git::snapshot as git_snapshot;
 use sovereign_plugin::validate_manifest;
 use sovereign_terminal::{BlockTimeline, OutputStream};
 use tracing_subscriber::EnvFilter;
@@ -46,6 +47,10 @@ enum Commands {
         #[command(subcommand)]
         command: BlockCommands,
     },
+    Git {
+        #[command(subcommand)]
+        command: GitCommands,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -56,6 +61,14 @@ enum PluginCommands {
 #[derive(Debug, Subcommand)]
 enum BlockCommands {
     Demo,
+}
+
+#[derive(Debug, Subcommand)]
+enum GitCommands {
+    Snapshot {
+        #[arg(default_value = ".")]
+        path: PathBuf,
+    },
 }
 
 #[tokio::main]
@@ -81,6 +94,9 @@ async fn main() -> Result<()> {
         },
         Commands::Blocks { command } => match command {
             BlockCommands::Demo => blocks_demo(),
+        },
+        Commands::Git { command } => match command {
+            GitCommands::Snapshot { path } => git_snapshot_command(path),
         },
     }
 }
@@ -207,6 +223,12 @@ fn blocks_demo() -> Result<()> {
     println!("{}", serde_json::to_string_pretty(&timeline)?);
     println!("\n--- agent context ---");
     println!("{}", timeline.agent_context_for_blocks(["demo-1"]));
+    Ok(())
+}
+
+fn git_snapshot_command(path: PathBuf) -> Result<()> {
+    let snapshot = git_snapshot(path)?;
+    println!("{}", serde_json::to_string_pretty(&snapshot)?);
     Ok(())
 }
 

@@ -11,6 +11,7 @@ Sovereign Term is split into replaceable subsystems so the product can evolve wi
 - `sovereign-term`: developer CLI and future app entrypoint.
 
 See [block-engine.md](block-engine.md) for the local command-block data model.
+See [git-plugin.md](git-plugin.md) for the local Git plugin model.
 
 ## Runtime Boundaries
 
