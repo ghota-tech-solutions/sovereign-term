@@ -6,6 +6,7 @@ use clap::{Parser, Subcommand};
 use sovereign_agent::{ChatCompletionRequest, ChatMessage, OpenAiCompatibleClient};
 use sovereign_core::{load_config, redact_secret, write_default_config};
 use sovereign_plugin::validate_manifest;
+use sovereign_terminal::{BlockTimeline, OutputStream};
 use tracing_subscriber::EnvFilter;
 
 #[derive(Debug, Parser)]
@@ -41,11 +42,20 @@ enum Commands {
         #[command(subcommand)]
         command: PluginCommands,
     },
+    Blocks {
+        #[command(subcommand)]
+        command: BlockCommands,
+    },
 }
 
 #[derive(Debug, Subcommand)]
 enum PluginCommands {
     Validate { manifest: PathBuf },
+}
+
+#[derive(Debug, Subcommand)]
+enum BlockCommands {
+    Demo,
 }
 
 #[tokio::main]
@@ -68,6 +78,9 @@ async fn main() -> Result<()> {
         } => chat(cli.config, provider, prompt, system).await,
         Commands::Plugin { command } => match command {
             PluginCommands::Validate { manifest } => validate_plugin(manifest),
+        },
+        Commands::Blocks { command } => match command {
+            BlockCommands::Demo => blocks_demo(),
         },
     }
 }
@@ -176,6 +189,24 @@ fn validate_plugin(manifest: PathBuf) -> Result<()> {
         manifest.id,
         manifest.permissions.len()
     );
+    Ok(())
+}
+
+fn blocks_demo() -> Result<()> {
+    let mut timeline = BlockTimeline::new();
+    timeline.start_command("demo-1", "/tmp/sovereign-term", "cargo test", 1_000)?;
+    timeline.append_output_bytes("demo-1", OutputStream::Stdout, b"running 4 tests\n", 1_050)?;
+    timeline.append_output_bytes(
+        "demo-1",
+        OutputStream::Stderr,
+        b"test terminal_snapshot_builds_agent_context ... ok\n",
+        1_100,
+    )?;
+    timeline.finish_command("demo-1", 0, 1_250)?;
+
+    println!("{}", serde_json::to_string_pretty(&timeline)?);
+    println!("\n--- agent context ---");
+    println!("{}", timeline.agent_context_for_blocks(["demo-1"]));
     Ok(())
 }
 

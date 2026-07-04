@@ -78,6 +78,7 @@ Sovereign Term
 ```
 
 See [docs/architecture/overview.md](docs/architecture/overview.md).
+See [docs/architecture/block-engine.md](docs/architecture/block-engine.md) for the command-block data model.
 See [docs/product/privacy-model.md](docs/product/privacy-model.md) for the privacy contract.
 See [docs/product/interface-system.md](docs/product/interface-system.md) for the block-based interface direction.
 
