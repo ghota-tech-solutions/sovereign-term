@@ -1,0 +1,17 @@
+[package]
+name = "sovereign-fs"
+version = "0.1.0"
+description = "Permissioned local filesystem metadata primitives for Sovereign Term."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1.0"
+tempfile = "3.23"
