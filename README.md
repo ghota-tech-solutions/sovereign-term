@@ -25,6 +25,7 @@ This repository is intentionally early. The first milestone is a compilable Rust
 - OpenAI-compatible chat client for oMLX, Ollama, LM Studio, vLLM, and similar servers
 - default oMLX provider targeting `http://127.0.0.1:8000/v1/chat/completions`
 - privacy defaults with telemetry and cloud handoff disabled
+- public model endpoints blocked unless `allow_remote = true`
 - plugin manifest model with explicit capabilities
 - metadata-only Git and filesystem snapshots for future plugins
 - CLI commands for config, provider inspection, local chat, plugin validation, block demos, Git snapshots, and filesystem snapshots

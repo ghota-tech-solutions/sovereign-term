@@ -8,11 +8,12 @@ Sovereign Term treats privacy as a product invariant.
 - Cloud handoff is disabled.
 - The default model provider is local oMLX on `127.0.0.1`.
 - The CLI prints the model network destination before a request.
+- Public internet model endpoints are blocked unless their provider sets `allow_remote = true`.
 - API keys are read from environment variables or local config and are not printed.
 
 ## Local Provider Contract
 
-A local provider is expected to be reachable on loopback or a private host. Sovereign Term does not reject loopback endpoints; they are the preferred path.
+A local provider is expected to be reachable on loopback or a private network address. Sovereign Term allows loopback and private network endpoints for providers with `allow_remote = false`; public internet hosts require explicit opt-in.
 
 Example:
 
