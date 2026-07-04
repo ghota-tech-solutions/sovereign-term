@@ -10,6 +10,7 @@
 
 ## Milestone 1: Terminal Surface
 
+- interface system and visual tokens
 - native app shell
 - PTY-backed terminal
 - tabs and panes
