@@ -2,10 +2,11 @@ use std::collections::HashSet;
 use std::error::Error;
 use std::fmt;
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sovereign_terminal::{BlockStatus, BlockTimeline, CommandBlock, OutputStream};
 
 const DEFAULT_AGENT_PANEL_WIDTH_FRACTION: f32 = 0.34;
+pub const MAX_CONTEXT_CHIP_PREVIEW_CHARS: usize = 160;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkspaceSurface {
@@ -70,32 +71,48 @@ impl WorkspaceSurface {
                 plugins_with_filesystem_access: 0,
             },
         );
-        surface.agent_panel.context_chips = vec![
-            AgentContextChip::new(
-                "chip-selected-block",
-                "selected block",
-                ContextChipPayload::SelectedBlock {
-                    pane_id: "pane-main".to_string(),
-                    block_id: "demo-cargo-test".to_string(),
-                },
-            ),
-            AgentContextChip::new(
-                "chip-git-diff",
-                "git diff",
-                ContextChipPayload::GitDiff {
-                    snapshot_id: "git-snapshot-current".to_string(),
-                },
-            ),
-            AgentContextChip::new(
-                "chip-files",
-                "filesystem snapshot",
-                ContextChipPayload::FilesystemSelection {
-                    snapshot_id: "fs-snapshot-current".to_string(),
-                    root: "/Users/me/project".to_string(),
-                    paths: vec!["src/main.rs".to_string()],
-                },
-            ),
-        ];
+        surface
+            .agent_panel
+            .set_context_chips(vec![
+                AgentContextChip::new_with_preview(
+                    "chip-selected-block",
+                    "selected block",
+                    ContextChipPayload::SelectedBlock {
+                        pane_id: "pane-main".to_string(),
+                        block_id: "demo-cargo-test".to_string(),
+                    },
+                    "cargo test output preview: running 4 tests; all tests passed",
+                ),
+                AgentContextChip::new(
+                    "chip-git-diff",
+                    "git diff",
+                    ContextChipPayload::GitDiff {
+                        snapshot_id: "git-snapshot-current".to_string(),
+                    },
+                ),
+                AgentContextChip::new(
+                    "chip-files",
+                    "filesystem snapshot",
+                    ContextChipPayload::FilesystemSelection {
+                        snapshot_id: "fs-snapshot-current".to_string(),
+                        root: "/Users/me/project".to_string(),
+                        paths: vec!["src/main.rs".to_string()],
+                    },
+                ),
+                AgentContextChip::new_with_preview(
+                    "chip-file-preview",
+                    "README preview",
+                    ContextChipPayload::FilesystemReadPreview {
+                        preview_id: "fs-read-preview-readme".to_string(),
+                        root: "/Users/me/project".to_string(),
+                        path: "README.md".to_string(),
+                        bytes_read: 512,
+                        truncated: true,
+                    },
+                    "Sovereign Term is a local-first, agentic terminal for developers who want modern AI workflows without hidden server-side routing.",
+                ),
+            ])
+            .expect("demo context chips are unique");
         surface
             .active_tab_mut()
             .expect("active tab")
@@ -154,6 +171,7 @@ impl WorkspaceSurface {
         if !self.tabs.iter().any(|tab| tab.id == self.active_tab_id) {
             return Err(SurfaceError::TabNotFound(self.active_tab_id.clone()));
         }
+        self.agent_panel.validate()?;
         Ok(())
     }
 }
@@ -385,12 +403,41 @@ pub enum PaneSplit {
     Grid,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct AgentPanelState {
     pub visible: bool,
     pub active_tab: AgentPanelTab,
     pub width_fraction: f32,
     pub context_chips: Vec<AgentContextChip>,
+    #[serde(default)]
+    pub context_manifest: AgentContextManifest,
+}
+
+impl<'de> Deserialize<'de> for AgentPanelState {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct RawAgentPanelState {
+            visible: bool,
+            active_tab: AgentPanelTab,
+            width_fraction: f32,
+            context_chips: Vec<AgentContextChip>,
+            #[serde(default)]
+            context_manifest: Option<AgentContextManifest>,
+        }
+
+        let raw = RawAgentPanelState::deserialize(deserializer)?;
+        let expected_manifest = AgentContextManifest::from_chips(&raw.context_chips);
+        Ok(Self {
+            visible: raw.visible,
+            active_tab: raw.active_tab,
+            width_fraction: raw.width_fraction,
+            context_chips: raw.context_chips,
+            context_manifest: raw.context_manifest.unwrap_or(expected_manifest),
+        })
+    }
 }
 
 impl AgentPanelState {
@@ -406,7 +453,9 @@ impl AgentPanelState {
         {
             return Err(SurfaceError::DuplicateContextChipId(chip.id));
         }
+        validate_context_chip_preview(&chip)?;
         self.context_chips.push(chip);
+        self.refresh_context_manifest();
         Ok(())
     }
 
@@ -416,7 +465,40 @@ impl AgentPanelState {
             .iter()
             .position(|chip| chip.id == chip_id)
             .ok_or_else(|| SurfaceError::ContextChipNotFound(chip_id.to_string()))?;
-        Ok(self.context_chips.remove(index))
+        let removed = self.context_chips.remove(index);
+        self.refresh_context_manifest();
+        Ok(removed)
+    }
+
+    pub fn set_context_chips(&mut self, chips: Vec<AgentContextChip>) -> Result<(), SurfaceError> {
+        let mut chip_ids = HashSet::new();
+        for chip in &chips {
+            if !chip_ids.insert(chip.id.as_str()) {
+                return Err(SurfaceError::DuplicateContextChipId(chip.id.clone()));
+            }
+            validate_context_chip_preview(chip)?;
+        }
+        self.context_chips = chips;
+        self.refresh_context_manifest();
+        Ok(())
+    }
+
+    pub fn refresh_context_manifest(&mut self) {
+        self.context_manifest = AgentContextManifest::from_chips(&self.context_chips);
+    }
+
+    pub fn validate(&self) -> Result<(), SurfaceError> {
+        let mut chip_ids = HashSet::new();
+        for chip in &self.context_chips {
+            if !chip_ids.insert(chip.id.as_str()) {
+                return Err(SurfaceError::DuplicateContextChipId(chip.id.clone()));
+            }
+            validate_context_chip_preview(chip)?;
+        }
+        if self.context_manifest != AgentContextManifest::from_chips(&self.context_chips) {
+            return Err(SurfaceError::StaleContextManifest);
+        }
+        Ok(())
     }
 }
 
@@ -427,6 +509,7 @@ impl Default for AgentPanelState {
             active_tab: AgentPanelTab::Chat,
             width_fraction: DEFAULT_AGENT_PANEL_WIDTH_FRACTION,
             context_chips: Vec::new(),
+            context_manifest: AgentContextManifest::default(),
         }
     }
 }
@@ -445,6 +528,12 @@ pub struct AgentContextChip {
     pub id: String,
     pub label: String,
     pub payload: ContextChipPayload,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "serialize_optional_bounded_preview"
+    )]
+    pub preview: Option<String>,
     pub removable: bool,
 }
 
@@ -458,6 +547,22 @@ impl AgentContextChip {
             id: id.into(),
             label: label.into(),
             payload,
+            preview: None,
+            removable: true,
+        }
+    }
+
+    pub fn new_with_preview(
+        id: impl Into<String>,
+        label: impl Into<String>,
+        payload: ContextChipPayload,
+        preview: impl AsRef<str>,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            label: label.into(),
+            payload,
+            preview: Some(bound_context_preview(preview.as_ref())),
             removable: true,
         }
     }
@@ -482,6 +587,13 @@ pub enum ContextChipPayload {
         root: String,
         paths: Vec<String>,
     },
+    FilesystemReadPreview {
+        preview_id: String,
+        root: String,
+        path: String,
+        bytes_read: usize,
+        truncated: bool,
+    },
     CodeGraph {
         query: String,
     },
@@ -489,6 +601,198 @@ pub enum ContextChipPayload {
         plugin_id: String,
         payload_id: String,
     },
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AgentContextManifest {
+    pub entries: Vec<AgentContextManifestEntry>,
+    pub summary: AgentContextPrivacySummary,
+}
+
+impl AgentContextManifest {
+    pub fn from_chips(chips: &[AgentContextChip]) -> Self {
+        let entries = chips
+            .iter()
+            .map(AgentContextManifestEntry::from_chip)
+            .collect::<Vec<_>>();
+        let summary = AgentContextPrivacySummary::from_entries(&entries);
+        Self { entries, summary }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AgentContextManifestEntry {
+    pub chip_id: String,
+    pub label: String,
+    pub source: AgentContextSource,
+    pub content_kind: AgentContextContentKind,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "serialize_optional_bounded_preview"
+    )]
+    pub preview: Option<String>,
+    pub privacy: AgentContextPrivacyFlags,
+}
+
+impl AgentContextManifestEntry {
+    fn from_chip(chip: &AgentContextChip) -> Self {
+        let (source, content_kind, privacy) = classify_context_payload(&chip.payload);
+        Self {
+            chip_id: chip.id.clone(),
+            label: chip.label.clone(),
+            source,
+            content_kind,
+            preview: chip.preview.as_deref().map(bound_context_preview),
+            privacy,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum AgentContextSource {
+    TerminalBlock,
+    GitDiff,
+    FilesystemSnapshot,
+    FilesystemReadPreview,
+    CodeGraph,
+    Plugin,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum AgentContextContentKind {
+    TerminalOutputPreview,
+    PatchMetadata,
+    FilesystemMetadata,
+    BoundedFilePreview,
+    Query,
+    PluginPayload,
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AgentContextPrivacyFlags {
+    pub terminal_output_included: bool,
+    pub filesystem_contents_read: bool,
+    pub patch_contents_included: bool,
+    pub remote_network_used: bool,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AgentContextPrivacySummary {
+    pub chips: usize,
+    pub terminal_contexts: usize,
+    pub git_contexts: usize,
+    pub filesystem_contexts: usize,
+    pub code_graph_contexts: usize,
+    pub plugin_contexts: usize,
+    pub terminal_output_included: bool,
+    pub filesystem_contents_read: bool,
+    pub patch_contents_included: bool,
+    pub remote_network_used: bool,
+}
+
+impl AgentContextPrivacySummary {
+    fn from_entries(entries: &[AgentContextManifestEntry]) -> Self {
+        let mut summary = Self {
+            chips: entries.len(),
+            ..Self::default()
+        };
+        for entry in entries {
+            match entry.source {
+                AgentContextSource::TerminalBlock => summary.terminal_contexts += 1,
+                AgentContextSource::GitDiff => summary.git_contexts += 1,
+                AgentContextSource::FilesystemSnapshot
+                | AgentContextSource::FilesystemReadPreview => summary.filesystem_contexts += 1,
+                AgentContextSource::CodeGraph => summary.code_graph_contexts += 1,
+                AgentContextSource::Plugin => summary.plugin_contexts += 1,
+            }
+            summary.terminal_output_included |= entry.privacy.terminal_output_included;
+            summary.filesystem_contents_read |= entry.privacy.filesystem_contents_read;
+            summary.patch_contents_included |= entry.privacy.patch_contents_included;
+            summary.remote_network_used |= entry.privacy.remote_network_used;
+        }
+        summary
+    }
+}
+
+fn classify_context_payload(
+    payload: &ContextChipPayload,
+) -> (
+    AgentContextSource,
+    AgentContextContentKind,
+    AgentContextPrivacyFlags,
+) {
+    match payload {
+        ContextChipPayload::SelectedBlock { .. } | ContextChipPayload::LastCommand { .. } => (
+            AgentContextSource::TerminalBlock,
+            AgentContextContentKind::TerminalOutputPreview,
+            AgentContextPrivacyFlags {
+                terminal_output_included: true,
+                ..AgentContextPrivacyFlags::default()
+            },
+        ),
+        ContextChipPayload::GitDiff { .. } => (
+            AgentContextSource::GitDiff,
+            AgentContextContentKind::PatchMetadata,
+            AgentContextPrivacyFlags::default(),
+        ),
+        ContextChipPayload::FilesystemSelection { .. } => (
+            AgentContextSource::FilesystemSnapshot,
+            AgentContextContentKind::FilesystemMetadata,
+            AgentContextPrivacyFlags::default(),
+        ),
+        ContextChipPayload::FilesystemReadPreview { .. } => (
+            AgentContextSource::FilesystemReadPreview,
+            AgentContextContentKind::BoundedFilePreview,
+            AgentContextPrivacyFlags {
+                filesystem_contents_read: true,
+                ..AgentContextPrivacyFlags::default()
+            },
+        ),
+        ContextChipPayload::CodeGraph { .. } => (
+            AgentContextSource::CodeGraph,
+            AgentContextContentKind::Query,
+            AgentContextPrivacyFlags::default(),
+        ),
+        ContextChipPayload::PluginProvided { .. } => (
+            AgentContextSource::Plugin,
+            AgentContextContentKind::PluginPayload,
+            AgentContextPrivacyFlags::default(),
+        ),
+    }
+}
+
+fn bound_context_preview(preview: &str) -> String {
+    preview
+        .chars()
+        .take(MAX_CONTEXT_CHIP_PREVIEW_CHARS)
+        .collect()
+}
+
+fn serialize_optional_bounded_preview<S>(
+    preview: &Option<String>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    preview
+        .as_deref()
+        .map(bound_context_preview)
+        .serialize(serializer)
+}
+
+fn validate_context_chip_preview(chip: &AgentContextChip) -> Result<(), SurfaceError> {
+    if chip
+        .preview
+        .as_ref()
+        .is_some_and(|preview| preview.chars().count() > MAX_CONTEXT_CHIP_PREVIEW_CHARS)
+    {
+        return Err(SurfaceError::ContextChipPreviewTooLong(chip.id.clone()));
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -612,6 +916,8 @@ pub enum SurfaceError {
     BlockNotFound(String),
     DuplicateContextChipId(String),
     ContextChipNotFound(String),
+    ContextChipPreviewTooLong(String),
+    StaleContextManifest,
 }
 
 impl fmt::Display for SurfaceError {
@@ -630,6 +936,12 @@ impl fmt::Display for SurfaceError {
             }
             SurfaceError::ContextChipNotFound(id) => {
                 write!(formatter, "context chip '{id}' was not found")
+            }
+            SurfaceError::ContextChipPreviewTooLong(id) => {
+                write!(formatter, "context chip '{id}' preview is too long")
+            }
+            SurfaceError::StaleContextManifest => {
+                write!(formatter, "agent context manifest is stale")
             }
         }
     }
@@ -747,6 +1059,136 @@ mod tests {
                 .iter()
                 .any(|chip| chip.id == "chip-git-diff")
         );
+        assert_eq!(surface.agent_panel.context_manifest.summary.git_contexts, 0);
+        assert_eq!(surface.agent_panel.context_manifest.summary.chips, 3);
+        surface.validate().expect("manifest stays fresh");
+    }
+
+    #[test]
+    fn agent_context_manifest_classifies_local_context_and_privacy_flags() {
+        let surface = WorkspaceSurface::demo_local();
+        let manifest = &surface.agent_panel.context_manifest;
+
+        assert_eq!(manifest.summary.chips, 4);
+        assert_eq!(manifest.summary.terminal_contexts, 1);
+        assert_eq!(manifest.summary.git_contexts, 1);
+        assert_eq!(manifest.summary.filesystem_contexts, 2);
+        assert!(manifest.summary.terminal_output_included);
+        assert!(manifest.summary.filesystem_contents_read);
+        assert!(!manifest.summary.patch_contents_included);
+        assert!(!manifest.summary.remote_network_used);
+
+        let read_preview = manifest
+            .entries
+            .iter()
+            .find(|entry| entry.chip_id == "chip-file-preview")
+            .expect("file preview entry");
+        assert_eq!(
+            read_preview.source,
+            AgentContextSource::FilesystemReadPreview
+        );
+        assert_eq!(
+            read_preview.content_kind,
+            AgentContextContentKind::BoundedFilePreview
+        );
+        assert!(read_preview.privacy.filesystem_contents_read);
+        assert!(
+            read_preview
+                .preview
+                .as_ref()
+                .is_some_and(|preview| preview.chars().count() <= MAX_CONTEXT_CHIP_PREVIEW_CHARS)
+        );
+    }
+
+    #[test]
+    fn context_chip_previews_are_bounded_in_serialized_state() {
+        let mut panel = AgentPanelState::default();
+        let long_preview = "x".repeat(MAX_CONTEXT_CHIP_PREVIEW_CHARS + 40);
+        panel
+            .add_context_chip(AgentContextChip::new_with_preview(
+                "chip-long",
+                "long preview",
+                ContextChipPayload::FilesystemReadPreview {
+                    preview_id: "preview-long".to_string(),
+                    root: "/workspace".to_string(),
+                    path: "notes.txt".to_string(),
+                    bytes_read: 2_000,
+                    truncated: true,
+                },
+                &long_preview,
+            ))
+            .expect("add bounded chip");
+
+        let serialized = serde_json::to_string(&panel).expect("serialize panel");
+        assert!(serialized.contains("\"context_manifest\""));
+        assert!(!serialized.contains(&long_preview));
+        assert_eq!(
+            panel.context_chips[0]
+                .preview
+                .as_ref()
+                .expect("chip preview")
+                .chars()
+                .count(),
+            MAX_CONTEXT_CHIP_PREVIEW_CHARS
+        );
+        assert_eq!(
+            panel.context_manifest.entries[0]
+                .preview
+                .as_ref()
+                .expect("manifest preview")
+                .chars()
+                .count(),
+            MAX_CONTEXT_CHIP_PREVIEW_CHARS
+        );
+
+        let mut unsafe_chip = AgentContextChip::new(
+            "chip-unsafe",
+            "unsafe preview",
+            ContextChipPayload::CodeGraph {
+                query: "symbol search".to_string(),
+            },
+        );
+        unsafe_chip.preview = Some(long_preview);
+        assert_eq!(
+            panel
+                .add_context_chip(unsafe_chip)
+                .expect_err("oversized preview"),
+            SurfaceError::ContextChipPreviewTooLong("chip-unsafe".to_string())
+        );
+
+        let mut manually_mutated = WorkspaceSurface::demo_local();
+        let leaked_preview = "secret ".repeat(MAX_CONTEXT_CHIP_PREVIEW_CHARS);
+        manually_mutated.agent_panel.context_chips[0].preview = Some(leaked_preview.clone());
+        manually_mutated.agent_panel.refresh_context_manifest();
+        let serialized =
+            serde_json::to_string(&manually_mutated).expect("serialize mutated surface");
+
+        assert!(!serialized.contains(&leaked_preview));
+        assert!(
+            serialized.contains(
+                &leaked_preview
+                    .chars()
+                    .take(MAX_CONTEXT_CHIP_PREVIEW_CHARS)
+                    .collect::<String>()
+            )
+        );
+
+        manually_mutated.agent_panel.context_manifest.entries[0].preview =
+            Some(leaked_preview.clone());
+        let serialized_manifest_mutation =
+            serde_json::to_string(&manually_mutated).expect("serialize mutated manifest");
+        assert!(!serialized_manifest_mutation.contains(&leaked_preview));
+    }
+
+    #[test]
+    fn validate_rejects_stale_agent_context_manifest() {
+        let mut surface = WorkspaceSurface::demo_local();
+        surface.agent_panel.context_chips.pop();
+
+        assert_eq!(
+            surface.validate().expect_err("stale manifest"),
+            SurfaceError::StaleContextManifest
+        );
     }
 
     #[test]
@@ -773,6 +1215,7 @@ mod tests {
         let serialized = serde_json::to_string(&surface).expect("serialize");
 
         assert!(serialized.contains("\"agent_panel\""));
+        assert!(serialized.contains("\"context_manifest\""));
         assert!(serialized.contains("\"privacy_footer\""));
         assert!(serialized.contains("\"output_preview\""));
         assert!(!serialized.contains("\"output\""));
@@ -792,7 +1235,22 @@ mod tests {
                 "visible": true,
                 "active_tab": "chat",
                 "width_fraction": 0.34,
-                "context_chips": []
+                "context_chips": [],
+                "context_manifest": {
+                    "entries": [],
+                    "summary": {
+                        "chips": 0,
+                        "terminal_contexts": 0,
+                        "git_contexts": 0,
+                        "filesystem_contexts": 0,
+                        "code_graph_contexts": 0,
+                        "plugin_contexts": 0,
+                        "terminal_output_included": false,
+                        "filesystem_contents_read": false,
+                        "patch_contents_included": false,
+                        "remote_network_used": false
+                    }
+                }
             },
             "privacy_footer": {
                 "provider_scope": "local",
@@ -811,6 +1269,35 @@ mod tests {
             surface.validate().expect_err("invalid tab set"),
             SurfaceError::EmptyTabSet
         );
+    }
+
+    #[test]
+    fn deserializes_legacy_agent_panel_with_chips_without_manifest() {
+        let raw = r#"{
+            "visible": true,
+            "active_tab": "chat",
+            "width_fraction": 0.34,
+            "context_chips": [
+                {
+                    "id": "chip-selected-block",
+                    "label": "selected block",
+                    "payload": {
+                        "selected-block": {
+                            "pane_id": "pane-main",
+                            "block_id": "demo-cargo-test"
+                        }
+                    },
+                    "removable": true
+                }
+            ]
+        }"#;
+
+        let panel: AgentPanelState = serde_json::from_str(raw).expect("legacy panel");
+
+        assert_eq!(panel.context_manifest.summary.chips, 1);
+        assert_eq!(panel.context_manifest.summary.terminal_contexts, 1);
+        assert!(panel.context_manifest.summary.terminal_output_included);
+        panel.validate().expect("legacy manifest rebuilt");
     }
 
     #[test]
