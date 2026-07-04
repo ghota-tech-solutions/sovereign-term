@@ -9,7 +9,7 @@ use sovereign_agent::{
 };
 use sovereign_core::{SovereignConfig, load_config, redact_secret, write_default_config};
 use sovereign_fs::{FileSnapshotPolicy, snapshot_tree};
-use sovereign_git::snapshot as git_snapshot;
+use sovereign_git::{diff_summary as git_diff_summary, snapshot as git_snapshot};
 use sovereign_plugin::validate_manifest;
 use sovereign_terminal::{BlockTimeline, OutputStream};
 use sovereign_ui::WorkspaceSurface;
@@ -86,6 +86,10 @@ enum GitCommands {
         #[arg(default_value = ".")]
         path: PathBuf,
     },
+    DiffSummary {
+        #[arg(default_value = ".")]
+        path: PathBuf,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -141,6 +145,7 @@ async fn main() -> Result<()> {
         },
         Commands::Git { command } => match command {
             GitCommands::Snapshot { path } => git_snapshot_command(path),
+            GitCommands::DiffSummary { path } => git_diff_summary_command(path),
         },
         Commands::Fs { command } => match command {
             FsCommands::Snapshot {
@@ -405,6 +410,12 @@ fn blocks_demo() -> Result<()> {
 fn git_snapshot_command(path: PathBuf) -> Result<()> {
     let snapshot = git_snapshot(path)?;
     println!("{}", serde_json::to_string_pretty(&snapshot)?);
+    Ok(())
+}
+
+fn git_diff_summary_command(path: PathBuf) -> Result<()> {
+    let diff = git_diff_summary(path)?;
+    println!("{}", serde_json::to_string_pretty(&diff)?);
     Ok(())
 }
 
