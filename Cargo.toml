@@ -1,0 +1,38 @@
+[workspace]
+resolver = "3"
+members = [
+  ".",
+  "crates/sovereign-agent",
+  "crates/sovereign-core",
+  "crates/sovereign-plugin",
+  "crates/sovereign-terminal",
+]
+
+[workspace.package]
+edition = "2024"
+license = "Apache-2.0"
+repository = "https://github.com/ghota-tech-solutions/sovereign-term"
+homepage = "https://github.com/ghota-tech-solutions/sovereign-term"
+rust-version = "1.96"
+
+[package]
+name = "sovereign-term"
+version = "0.1.0"
+description = "A local-first, agentic terminal built for private inference and extensible workflows."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive", "env"] }
+serde_json = "1.0"
+sovereign-agent = { path = "crates/sovereign-agent" }
+sovereign-core = { path = "crates/sovereign-core" }
+sovereign-plugin = { path = "crates/sovereign-plugin" }
+sovereign-terminal = { path = "crates/sovereign-terminal" }
+tokio = { version = "1.47", features = ["macros", "rt-multi-thread"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }

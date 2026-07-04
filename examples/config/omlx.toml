@@ -1,0 +1,28 @@
+default_provider = "omlx"
+
+[privacy]
+telemetry_enabled = false
+cloud_handoff_enabled = false
+log_network_destinations = true
+require_confirmation_for_shell = true
+
+[plugins]
+enabled = true
+directory = "~/.config/sovereign-term/plugins"
+allow_unsigned_plugins = false
+
+[providers.omlx]
+display_name = "oMLX Local"
+endpoint = "http://127.0.0.1:8000/v1/chat/completions"
+model = "ornith-local-agent"
+api_key_env = "OMLX_API_KEY"
+request_timeout_secs = 120
+allow_remote = false
+
+[providers.omlx-code]
+display_name = "oMLX Code"
+endpoint = "http://127.0.0.1:8000/v1/chat/completions"
+model = "code-local-agent"
+api_key_env = "OMLX_API_KEY"
+request_timeout_secs = 120
+allow_remote = false

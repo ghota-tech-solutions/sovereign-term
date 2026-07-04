@@ -1,0 +1,12 @@
+[package]
+name = "sovereign-terminal"
+version = "0.1.0"
+description = "Terminal, command block, and PTY abstractions for Sovereign Term."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }

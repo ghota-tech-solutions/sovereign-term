@@ -1,0 +1,16 @@
+id = "git-helper"
+name = "Git Helper"
+version = "0.1.0"
+activation = ["manual", "on-command-block"]
+
+[entry]
+kind = "process"
+command = "sovereign-git-helper"
+
+[[permissions]]
+capability = "read-terminal"
+reason = "Reads the last command block to summarize git output."
+
+[[permissions]]
+capability = "read-workspace"
+reason = "Reads git status and diff metadata when explicitly invoked."
