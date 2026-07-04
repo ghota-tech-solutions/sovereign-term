@@ -13,6 +13,12 @@ Sovereign Term treats privacy as a product invariant.
 
 Run `sovereign-term offline check` to audit the active config before invoking an agent. The check fails when telemetry or cloud handoff are enabled, when the default provider points at public internet, or when any public provider is explicitly allowed for remote access.
 
+## Agent Context Contract
+
+The agent panel must make attached context explicit before a prompt is sent. `sovereign-ui` serializes a context manifest for every attached chip, including the source type and privacy flags for terminal output previews, filesystem content reads, patch contents, and remote network usage.
+
+Filesystem snapshots and Git diff summaries are metadata context by default. Filesystem read previews are explicit content reads and are marked as such in the manifest. Git diff summaries must keep `patch_contents_included = false` until a future patch-preview gate is added.
+
 ## Local Provider Contract
 
 A local provider is expected to be reachable on loopback or a private network address. Sovereign Term allows loopback and private network endpoints for providers with `allow_remote = false`; public internet hosts require explicit opt-in.
